@@ -14,6 +14,14 @@ const Index = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [verificationStep, setVerificationStep] = useState<'phone' | 'sms' | 'password'>('phone');
+  const [smsCode, setSmsCode] = useState('');
+  const [userProfile, setUserProfile] = useState({
+    name: 'Пользователь',
+    avatar: '👤',
+    emojiStatus: '🚀',
+    phone: ''
+  });
 
   if (!isLoggedIn) {
     return (
@@ -30,32 +38,76 @@ const Index = () => {
           </div>
 
           <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium mb-2 block">Номер телефона</label>
-              <Input
-                type="tel"
-                placeholder="+7 (999) 123-45-67"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                className="bg-muted/50 border-primary/20 focus:border-primary"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Создайте пароль</label>
-              <Input
-                type="password"
-                placeholder="Придумайте надёжный пароль"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="bg-muted/50 border-primary/20 focus:border-primary"
-              />
-            </div>
-            <Button
-              onClick={() => setIsLoggedIn(true)}
-              className="w-full bg-gradient-to-r from-primary via-secondary to-accent hover:opacity-90 transition-all shadow-lg hover:shadow-xl text-lg py-6"
-            >
-              Войти в Freky
-            </Button>
+            {verificationStep === 'phone' && (
+              <>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Номер телефона</label>
+                  <Input
+                    type="tel"
+                    placeholder="+7 (999) 123-45-67"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    className="bg-muted/50 border-primary/20 focus:border-primary"
+                  />
+                </div>
+                <Button
+                  onClick={() => {
+                    setUserProfile({ ...userProfile, phone: phoneNumber });
+                    setVerificationStep('sms');
+                  }}
+                  className="w-full bg-gradient-to-r from-primary via-secondary to-accent hover:opacity-90 transition-all shadow-lg hover:shadow-xl text-lg py-6"
+                >
+                  Получить SMS-код
+                </Button>
+              </>
+            )}
+
+            {verificationStep === 'sms' && (
+              <>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Введите код из SMS</label>
+                  <Input
+                    type="text"
+                    placeholder="000000"
+                    value={smsCode}
+                    onChange={(e) => setSmsCode(e.target.value)}
+                    className="bg-muted/50 border-primary/20 focus:border-primary text-center text-2xl tracking-widest"
+                    maxLength={6}
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">Код отправлен на {phoneNumber}</p>
+                </div>
+                <Button
+                  onClick={() => setVerificationStep('password')}
+                  className="w-full bg-gradient-to-r from-primary via-secondary to-accent hover:opacity-90 transition-all shadow-lg hover:shadow-xl text-lg py-6"
+                >
+                  Подтвердить
+                </Button>
+                <Button variant="ghost" onClick={() => setVerificationStep('phone')} className="w-full">
+                  Изменить номер
+                </Button>
+              </>
+            )}
+
+            {verificationStep === 'password' && (
+              <>
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Создайте пароль</label>
+                  <Input
+                    type="password"
+                    placeholder="Придумайте надёжный пароль"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="bg-muted/50 border-primary/20 focus:border-primary"
+                  />
+                </div>
+                <Button
+                  onClick={() => setIsLoggedIn(true)}
+                  className="w-full bg-gradient-to-r from-primary via-secondary to-accent hover:opacity-90 transition-all shadow-lg hover:shadow-xl text-lg py-6"
+                >
+                  Войти в Freky
+                </Button>
+              </>
+            )}
           </div>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
@@ -83,6 +135,7 @@ const Index = () => {
             { id: 'stickers', icon: 'Smile', label: 'Стикеры' },
             { id: 'crypto', icon: 'TrendingUp', label: 'Крипто' },
             { id: 'channel', icon: 'Radio', label: 'Канал' },
+            { id: 'business', icon: 'Briefcase', label: 'Бизнес' },
             { id: 'profile', icon: 'User', label: 'Профиль' },
           ].map((item) => (
             <button
@@ -100,7 +153,7 @@ const Index = () => {
           ))}
         </nav>
 
-        <button className="w-12 h-12 rounded-xl hover:bg-muted flex items-center justify-center transition-all hover:scale-110">
+        <button onClick={() => setActiveTab('settings')} className="w-12 h-12 rounded-xl hover:bg-muted flex items-center justify-center transition-all hover:scale-110">
           <Icon name="Settings" size={20} className="text-muted-foreground" />
         </button>
       </aside>
@@ -112,7 +165,9 @@ const Index = () => {
         {activeTab === 'stickers' && <StickersView />}
         {activeTab === 'crypto' && <CryptoView />}
         {activeTab === 'channel' && <ChannelView />}
-        {activeTab === 'profile' && <ProfileView />}
+        {activeTab === 'business' && <BusinessView />}
+        {activeTab === 'profile' && <ProfileView userProfile={userProfile} setUserProfile={setUserProfile} />}
+        {activeTab === 'settings' && <SettingsView />}
       </div>
     </div>
   );
@@ -120,18 +175,23 @@ const Index = () => {
 
 const ChatsView = () => {
   const [selectedChat, setSelectedChat] = useState<number | null>(null);
-  const chats = [
-    { id: 1, name: 'Александр', lastMessage: 'Привет! Как дела?', time: '14:32', unread: 2, avatar: '👨‍💼', online: true },
-    { id: 2, name: 'Мария', lastMessage: 'Встречаемся завтра?', time: '13:15', unread: 0, avatar: '👩‍🦰', online: true },
-    { id: 3, name: 'Команда разработки', lastMessage: 'Новая фича готова!', time: '12:04', unread: 5, avatar: '💻', online: false },
-    { id: 4, name: 'Мама ❤️', lastMessage: 'Не забудь поесть', time: 'Вчера', unread: 1, avatar: '👩', online: false },
-  ];
+  const [showNewChatDialog, setShowNewChatDialog] = useState(false);
+  const [newChatType, setNewChatType] = useState<'personal' | 'group' | 'secret'>('personal');
+  const [chats] = useState([
+    { id: 1, name: 'Секретный чат', lastMessage: '🔒 Конфиденциальное сообщение', time: '15:20', unread: 1, avatar: '🔒', online: true, type: 'secret' },
+    { id: 2, name: 'Группа друзей', lastMessage: 'Алекс: Встречаемся завтра!', time: '14:45', unread: 3, avatar: '👥', online: false, type: 'group', members: 12 },
+  ]);
 
   return (
     <div className="flex h-full">
       <div className="w-96 border-r border-border flex flex-col">
         <div className="p-4 border-b border-border">
-          <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Чаты</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Чаты</h2>
+            <Button size="icon" className="bg-gradient-to-r from-primary to-secondary" onClick={() => setShowNewChatDialog(true)}>
+              <Icon name="Plus" size={20} />
+            </Button>
+          </div>
           <div className="relative">
             <Icon name="Search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input placeholder="Поиск чатов..." className="pl-10 bg-muted/50" />
@@ -158,7 +218,10 @@ const ChatsView = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-semibold truncate">{chat.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold truncate">{chat.name}</h3>
+                      {chat.type === 'group' && <Badge variant="outline" className="text-xs">{chat.members}</Badge>}
+                    </div>
                     <span className="text-xs text-muted-foreground">{chat.time}</span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -173,6 +236,54 @@ const ChatsView = () => {
           ))}
         </ScrollArea>
       </div>
+
+      {showNewChatDialog && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+          <Card className="w-full max-w-md p-6 m-4">
+            <h3 className="text-xl font-bold mb-4">Создать чат</h3>
+            <div className="space-y-3 mb-6">
+              <Button
+                variant={newChatType === 'personal' ? 'default' : 'outline'}
+                className="w-full justify-start"
+                onClick={() => setNewChatType('personal')}
+              >
+                <Icon name="User" size={20} className="mr-2" />
+                Личный чат
+              </Button>
+              <Button
+                variant={newChatType === 'group' ? 'default' : 'outline'}
+                className="w-full justify-start"
+                onClick={() => setNewChatType('group')}
+              >
+                <Icon name="Users" size={20} className="mr-2" />
+                Групповой чат
+              </Button>
+              <Button
+                variant={newChatType === 'secret' ? 'default' : 'outline'}
+                className="w-full justify-start"
+                onClick={() => setNewChatType('secret')}
+              >
+                <Icon name="Lock" size={20} className="mr-2" />
+                Секретный чат 🔒
+              </Button>
+            </div>
+            <div className="space-y-3">
+              <Input placeholder={newChatType === 'group' ? 'Название группы' : 'Номер телефона'} />
+              {newChatType === 'group' && (
+                <Input placeholder="Добавить участников..." />
+              )}
+              <div className="flex gap-2">
+                <Button className="flex-1 bg-gradient-to-r from-primary to-secondary" onClick={() => setShowNewChatDialog(false)}>
+                  Создать
+                </Button>
+                <Button variant="outline" onClick={() => setShowNewChatDialog(false)}>
+                  Отмена
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
 
       {selectedChat ? (
         <ChatWindow chat={chats.find((c) => c.id === selectedChat)!} onClose={() => setSelectedChat(null)} />
@@ -248,12 +359,7 @@ const CallsView = () => {
 };
 
 const ContactsView = () => {
-  const contacts = [
-    { id: 1, name: 'Александр Иванов', phone: '+7 999 123-45-67', avatar: '👨‍💼' },
-    { id: 2, name: 'Мария Петрова', phone: '+7 999 765-43-21', avatar: '👩‍🦰' },
-    { id: 3, name: 'Иван Сидоров', phone: '+7 999 555-55-55', avatar: '👨' },
-    { id: 4, name: 'Елена Смирнова', phone: '+7 999 111-22-33', avatar: '👩' },
-  ];
+  const [contacts] = useState<Array<{ id: number; name: string; phone: string; avatar: string }>>([]);
 
   return (
     <div className="flex flex-col h-full">
@@ -272,29 +378,45 @@ const ContactsView = () => {
       </div>
 
       <ScrollArea className="flex-1 p-4">
-        <div className="grid gap-3">
-          {contacts.map((contact) => (
-            <Card key={contact.id} className="p-4 hover:bg-muted/50 transition-all cursor-pointer animate-fade-in">
-              <div className="flex items-center gap-4">
-                <Avatar className="w-14 h-14">
-                  <AvatarFallback className="text-2xl">{contact.avatar}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <h3 className="font-semibold">{contact.name}</h3>
-                  <p className="text-sm text-muted-foreground">{contact.phone}</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="icon" variant="ghost" className="hover:bg-primary/20">
-                    <Icon name="MessageCircle" size={20} />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="hover:bg-secondary/20">
-                    <Icon name="Phone" size={20} />
-                  </Button>
-                </div>
+        {contacts.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center animate-fade-in">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mx-auto mb-4">
+                <Icon name="Users" size={48} className="text-primary" />
               </div>
-            </Card>
-          ))}
-        </div>
+              <h3 className="text-xl font-semibold mb-2">Контактов пока нет</h3>
+              <p className="text-muted-foreground mb-4">Добавьте контакты по номеру телефона</p>
+              <Button className="bg-gradient-to-r from-primary to-secondary">
+                <Icon name="UserPlus" size={18} className="mr-2" />
+                Добавить контакт
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {contacts.map((contact) => (
+              <Card key={contact.id} className="p-4 hover:bg-muted/50 transition-all cursor-pointer animate-fade-in">
+                <div className="flex items-center gap-4">
+                  <Avatar className="w-14 h-14">
+                    <AvatarFallback className="text-2xl">{contact.avatar}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h3 className="font-semibold">{contact.name}</h3>
+                    <p className="text-sm text-muted-foreground">{contact.phone}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="icon" variant="ghost" className="hover:bg-primary/20">
+                      <Icon name="MessageCircle" size={20} />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="hover:bg-secondary/20">
+                      <Icon name="Phone" size={20} />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </ScrollArea>
     </div>
   );
@@ -414,6 +536,10 @@ const CryptoView = () => {
 };
 
 const ChannelView = () => {
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [channelAdmins, setChannelAdmins] = useState([
+    { id: 1, name: 'Создатель Freky', phone: '+7 999 100-00-00', role: 'owner', avatar: '👑' }
+  ]);
   const news = [
     { id: 1, title: 'Обновление 2.0 уже здесь! 🚀', content: 'Добавлены новые функции: групповые видеозвонки до 50 человек, улучшенная криптобиржа и новые стикер-паки!', time: '2 часа назад' },
     { id: 2, title: 'FrekyPremium бесплатно навсегда! 🎉', content: 'Мы решили сделать все премиум-функции доступными для всех пользователей без ограничений.', time: '1 день назад' },
@@ -423,22 +549,63 @@ const ChannelView = () => {
   return (
     <div className="flex flex-col h-full">
       <div className="p-6 border-b border-border">
-        <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-            <Icon name="Radio" size={24} className="text-white" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-2xl font-bold">Freky News</h2>
-              <Badge className="bg-gradient-to-r from-primary to-secondary">
-                <Icon name="CheckCircle" size={14} className="mr-1" />
-                Официальный
-              </Badge>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+              <Icon name="Radio" size={24} className="text-white" />
             </div>
-            <p className="text-sm text-muted-foreground">Новости и обновления</p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-2xl font-bold">Freky News</h2>
+                <Badge className="bg-gradient-to-r from-primary to-secondary">
+                  <Icon name="CheckCircle" size={14} className="mr-1" />
+                  Официальный
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">Новости и обновления</p>
+            </div>
           </div>
+          <Button variant="outline" onClick={() => setShowAdminPanel(!showAdminPanel)}>
+            <Icon name="Shield" size={18} className="mr-2" />
+            Администраторы
+          </Button>
         </div>
       </div>
+
+      {showAdminPanel && (
+        <div className="border-b border-border bg-muted/30 p-4 animate-fade-in">
+          <h3 className="font-semibold mb-3">Администраторы канала</h3>
+          <div className="space-y-2 mb-4">
+            {channelAdmins.map((admin) => (
+              <div key={admin.id} className="flex items-center gap-3 p-2 rounded-lg bg-card">
+                <Avatar className="w-10 h-10">
+                  <AvatarFallback className="text-xl">{admin.avatar}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <p className="font-medium text-sm">{admin.name}</p>
+                  <p className="text-xs text-muted-foreground">{admin.phone}</p>
+                </div>
+                <Badge variant={admin.role === 'owner' ? 'default' : 'secondary'}>
+                  {admin.role === 'owner' ? 'Владелец' : 'Админ'}
+                </Badge>
+              </div>
+            ))}
+          </div>
+          <Input placeholder="Введите номер телефона нового админа" className="mb-2" />
+          <Button className="w-full bg-gradient-to-r from-primary to-secondary" onClick={() => {
+            setChannelAdmins([...channelAdmins, {
+              id: channelAdmins.length + 1,
+              name: 'Новый админ',
+              phone: '+7 999 000-00-00',
+              role: 'admin',
+              avatar: '👤'
+            }]);
+          }}>
+            <Icon name="UserPlus" size={18} className="mr-2" />
+            Добавить администратора
+          </Button>
+        </div>
+      )}
 
       <ScrollArea className="flex-1 p-6">
         <div className="space-y-4">
@@ -605,6 +772,9 @@ const ChatWindow = ({ chat, onClose }: ChatWindowProps) => {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button size="icon" variant="ghost" className="hover:bg-primary/20" title="Переводчик">
+            <Icon name="Languages" size={20} />
+          </Button>
           <Button size="icon" variant="ghost" className="hover:bg-primary/20">
             <Icon name="Phone" size={20} />
           </Button>
@@ -687,7 +857,16 @@ const ChatWindow = ({ chat, onClose }: ChatWindowProps) => {
   );
 };
 
-const ProfileView = () => {
+interface ProfileViewProps {
+  userProfile: { name: string; avatar: string; emojiStatus: string; phone: string };
+  setUserProfile: (profile: { name: string; avatar: string; emojiStatus: string; phone: string }) => void;
+}
+
+const ProfileView = ({ userProfile, setUserProfile }: ProfileViewProps) => {
+  const [editName, setEditName] = useState(userProfile.name);
+  const [selectedEmoji, setSelectedEmoji] = useState(userProfile.emojiStatus);
+  const emojiOptions = ['🚀', '💎', '🔥', '⚡', '✨', '🎨', '🎮', '🎵', '💼', '🏆'];
+
   return (
     <div className="flex flex-col h-full">
       <div className="p-6 border-b border-border">
@@ -700,15 +879,16 @@ const ProfileView = () => {
             <div className="flex items-center gap-6">
               <div className="relative group cursor-pointer">
                 <Avatar className="w-24 h-24">
-                  <AvatarFallback className="text-4xl bg-gradient-to-br from-primary to-secondary">👤</AvatarFallback>
+                  <AvatarFallback className="text-4xl bg-gradient-to-br from-primary to-secondary">{userProfile.avatar}</AvatarFallback>
                 </Avatar>
+                <div className="absolute bottom-0 right-0 text-3xl">{userProfile.emojiStatus}</div>
                 <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <Icon name="Camera" size={24} className="text-white" />
                 </div>
               </div>
               <div className="flex-1">
-                <h3 className="text-2xl font-bold mb-1">Пользователь</h3>
-                <p className="text-muted-foreground">+7 999 123-45-67</p>
+                <h3 className="text-2xl font-bold mb-1">{userProfile.name}</h3>
+                <p className="text-muted-foreground">{userProfile.phone}</p>
                 <Badge className="mt-2 bg-gradient-to-r from-primary to-secondary">
                   FrekyPremium
                 </Badge>
@@ -720,14 +900,53 @@ const ProfileView = () => {
             <h3 className="text-lg font-semibold mb-4">Настройки профиля</h3>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium mb-2 block">Имя</label>
-                <Input placeholder="Введите имя" className="bg-muted/50" />
+                <label className="text-sm font-medium mb-2 block">Имя пользователя</label>
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="bg-muted/50"
+                />
               </div>
               <div>
-                <label className="text-sm font-medium mb-2 block">О себе</label>
-                <Input placeholder="Статус..." className="bg-muted/50" />
+                <label className="text-sm font-medium mb-2 block">Emoji статус</label>
+                <div className="grid grid-cols-5 gap-2">
+                  {emojiOptions.map((emoji) => (
+                    <button
+                      key={emoji}
+                      onClick={() => setSelectedEmoji(emoji)}
+                      className={`aspect-square rounded-xl flex items-center justify-center text-3xl transition-all ${
+                        selectedEmoji === emoji
+                          ? 'bg-gradient-to-br from-primary to-secondary scale-110'
+                          : 'bg-muted/50 hover:bg-muted'
+                      }`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <Button className="w-full bg-gradient-to-r from-primary to-secondary">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Выбрать фото профиля (эмодзи)</label>
+                <div className="grid grid-cols-5 gap-2">
+                  {['👤', '👨‍💼', '👩‍🦰', '🦸', '🧑‍💻', '👨‍🎨', '👩‍🚀', '🤖', '👾', '🎭'].map((avatar) => (
+                    <button
+                      key={avatar}
+                      onClick={() => setUserProfile({ ...userProfile, avatar })}
+                      className={`aspect-square rounded-xl flex items-center justify-center text-3xl transition-all ${
+                        userProfile.avatar === avatar
+                          ? 'bg-gradient-to-br from-primary to-secondary scale-110'
+                          : 'bg-muted/50 hover:bg-muted'
+                      }`}
+                    >
+                      {avatar}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <Button
+                className="w-full bg-gradient-to-r from-primary to-secondary"
+                onClick={() => setUserProfile({ ...userProfile, name: editName, emojiStatus: selectedEmoji })}
+              >
                 Сохранить изменения
               </Button>
             </div>
@@ -748,6 +967,148 @@ const ProfileView = () => {
                   <span className="text-white font-medium text-sm">{theme.name}</span>
                 </button>
               ))}
+            </div>
+          </Card>
+        </div>
+      </ScrollArea>
+    </div>
+  );
+};
+
+const SettingsView = () => {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-6 border-b border-border">
+        <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Настройки</h2>
+      </div>
+
+      <ScrollArea className="flex-1 p-6">
+        <div className="max-w-2xl mx-auto space-y-6">
+          <Card className="p-6 animate-fade-in">
+            <h3 className="text-lg font-semibold mb-4">Уведомления</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Звук сообщений</p>
+                  <p className="text-sm text-muted-foreground">Воспроизводить звук при получении</p>
+                </div>
+                <input type="checkbox" defaultChecked className="w-10 h-5" />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Вибрация</p>
+                  <p className="text-sm text-muted-foreground">Вибрировать при звонках</p>
+                </div>
+                <input type="checkbox" defaultChecked className="w-10 h-5" />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="p-6 animate-fade-in">
+            <h3 className="text-lg font-semibold mb-4">Конфиденциальность</h3>
+            <div className="space-y-3">
+              <Button variant="outline" className="w-full justify-between">
+                <span>Кто видит мой номер</span>
+                <Icon name="ChevronRight" size={18} />
+              </Button>
+              <Button variant="outline" className="w-full justify-between">
+                <span>Кто видит мой статус</span>
+                <Icon name="ChevronRight" size={18} />
+              </Button>
+              <Button variant="outline" className="w-full justify-between">
+                <span>Заблокированные пользователи</span>
+                <Icon name="ChevronRight" size={18} />
+              </Button>
+            </div>
+          </Card>
+
+          <Card className="p-6 animate-fade-in">
+            <h3 className="text-lg font-semibold mb-4">Автоматический перевод</h3>
+            <p className="text-sm text-muted-foreground mb-3">
+              Включите автоперевод сообщений со всех языков
+            </p>
+            <div className="flex items-center justify-between">
+              <span>Переводить сообщения</span>
+              <input type="checkbox" defaultChecked className="w-10 h-5" />
+            </div>
+          </Card>
+        </div>
+      </ScrollArea>
+    </div>
+  );
+};
+
+const BusinessView = () => {
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-6 border-b border-border">
+        <div className="flex items-center gap-3">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg">
+            <Icon name="Briefcase" size={28} className="text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold">Freky Бизнес</h2>
+            <p className="text-sm text-muted-foreground">Инструменты для бизнеса</p>
+          </div>
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1 p-6">
+        <div className="space-y-6">
+          <Card className="p-6 animate-fade-in bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 border-primary/20">
+            <h3 className="text-xl font-bold mb-2">Создайте бизнес-аккаунт</h3>
+            <p className="text-muted-foreground mb-4">
+              Получите доступ к аналитике, автоответчикам, массовым рассылкам и интеграциям
+            </p>
+            <Button className="bg-gradient-to-r from-primary to-secondary">
+              <Icon name="Sparkles" size={18} className="mr-2" />
+              Создать бизнес-профиль
+            </Button>
+          </Card>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <Card className="p-5 animate-fade-in hover:bg-muted/50 transition-all cursor-pointer">
+              <Icon name="BarChart3" size={32} className="text-primary mb-3" />
+              <h3 className="font-semibold mb-2">Аналитика</h3>
+              <p className="text-sm text-muted-foreground">Статистика сообщений, звонков и клиентов</p>
+            </Card>
+
+            <Card className="p-5 animate-fade-in hover:bg-muted/50 transition-all cursor-pointer">
+              <Icon name="Bot" size={32} className="text-secondary mb-3" />
+              <h3 className="font-semibold mb-2">Автоответчики</h3>
+              <p className="text-sm text-muted-foreground">Настройте автоматические ответы</p>
+            </Card>
+
+            <Card className="p-5 animate-fade-in hover:bg-muted/50 transition-all cursor-pointer">
+              <Icon name="Send" size={32} className="text-accent mb-3" />
+              <h3 className="font-semibold mb-2">Рассылки</h3>
+              <p className="text-sm text-muted-foreground">Массовые сообщения вашим клиентам</p>
+            </Card>
+
+            <Card className="p-5 animate-fade-in hover:bg-muted/50 transition-all cursor-pointer">
+              <Icon name="Webhook" size={32} className="text-primary mb-3" />
+              <h3 className="font-semibold mb-2">API & Интеграции</h3>
+              <p className="text-sm text-muted-foreground">Подключите CRM и другие системы</p>
+            </Card>
+          </div>
+
+          <Card className="p-6 animate-fade-in">
+            <h3 className="text-lg font-semibold mb-4">Тарифы для бизнеса</h3>
+            <div className="space-y-3">
+              <div className="p-4 rounded-xl bg-muted/30">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold">Стартовый</h4>
+                  <Badge>Бесплатно</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">До 100 клиентов, базовая аналитика</p>
+              </div>
+              <div className="p-4 rounded-xl bg-gradient-to-r from-primary/20 to-secondary/20 border-2 border-primary">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold">Профессиональный</h4>
+                  <Badge className="bg-gradient-to-r from-primary to-secondary">2,999₽/мес</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">Безлимит клиентов, полная аналитика, API</p>
+              </div>
             </div>
           </Card>
         </div>
