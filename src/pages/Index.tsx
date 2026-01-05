@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -119,6 +119,7 @@ const Index = () => {
 };
 
 const ChatsView = () => {
+  const [selectedChat, setSelectedChat] = useState<number | null>(null);
   const chats = [
     { id: 1, name: 'Александр', lastMessage: 'Привет! Как дела?', time: '14:32', unread: 2, avatar: '👨‍💼', online: true },
     { id: 2, name: 'Мария', lastMessage: 'Встречаемся завтра?', time: '13:15', unread: 0, avatar: '👩‍🦰', online: true },
@@ -141,7 +142,10 @@ const ChatsView = () => {
           {chats.map((chat) => (
             <div
               key={chat.id}
-              className="p-4 hover:bg-muted/50 cursor-pointer transition-all border-b border-border/50 animate-fade-in"
+              onClick={() => setSelectedChat(chat.id)}
+              className={`p-4 hover:bg-muted/50 cursor-pointer transition-all border-b border-border/50 animate-fade-in ${
+                selectedChat === chat.id ? 'bg-muted/70' : ''
+              }`}
             >
               <div className="flex items-start gap-3">
                 <div className="relative">
@@ -170,25 +174,38 @@ const ChatsView = () => {
         </ScrollArea>
       </div>
 
-      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background">
-        <div className="text-center animate-fade-in">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mx-auto mb-4">
-            <Icon name="MessageCircle" size={48} className="text-primary" />
+      {selectedChat ? (
+        <ChatWindow chat={chats.find((c) => c.id === selectedChat)!} onClose={() => setSelectedChat(null)} />
+      ) : (
+        <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background">
+          <div className="text-center animate-fade-in">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mx-auto mb-4">
+              <Icon name="MessageCircle" size={48} className="text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">Выберите чат</h3>
+            <p className="text-muted-foreground">Начните общение с друзьями</p>
           </div>
-          <h3 className="text-xl font-semibold mb-2">Выберите чат</h3>
-          <p className="text-muted-foreground">Начните общение с друзьями</p>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
 const CallsView = () => {
+  const [activeCall, setActiveCall] = useState<{ name: string; avatar: string; type: string } | null>(null);
   const calls = [
     { id: 1, name: 'Александр', type: 'video', time: '14:32, Сегодня', duration: '12:34', avatar: '👨‍💼', missed: false },
     { id: 2, name: 'Мария', type: 'audio', time: '10:15, Сегодня', duration: '5:21', avatar: '👩‍🦰', missed: false },
     { id: 3, name: 'Иван', type: 'video', time: 'Вчера', duration: '—', avatar: '👨', missed: true },
   ];
+
+  const startCall = (call: { name: string; avatar: string; type: string }) => {
+    setActiveCall(call);
+  };
+
+  if (activeCall) {
+    return <VideoCallWindow call={activeCall} onEndCall={() => setActiveCall(null)} />;
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -218,7 +235,7 @@ const CallsView = () => {
                     {call.duration !== '—' && <span>• {call.duration}</span>}
                   </div>
                 </div>
-                <Button size="icon" variant="ghost" className="hover:bg-primary/20">
+                <Button size="icon" variant="ghost" className="hover:bg-primary/20" onClick={() => startCall({ name: call.name, avatar: call.avatar, type: call.type })}>
                   <Icon name="Phone" size={20} />
                 </Button>
               </div>
@@ -441,6 +458,231 @@ const ChannelView = () => {
           ))}
         </div>
       </ScrollArea>
+    </div>
+  );
+};
+
+interface VideoCallWindowProps {
+  call: { name: string; avatar: string; type: string };
+  onEndCall: () => void;
+}
+
+const VideoCallWindow = ({ call, onEndCall }: VideoCallWindowProps) => {
+  const [callDuration, setCallDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(false);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCallDuration((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="flex-1 flex flex-col relative bg-gradient-to-br from-background via-muted/20 to-background">
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="text-center animate-scale-in">
+          <div className="w-40 h-40 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-6 shadow-2xl animate-pulse-glow">
+            <span className="text-7xl">{call.avatar}</span>
+          </div>
+          <h2 className="text-3xl font-bold mb-2">{call.name}</h2>
+          <div className="flex items-center justify-center gap-2 text-muted-foreground mb-1">
+            <Icon name={call.type === 'video' ? 'Video' : 'Phone'} size={20} />
+            <span className="text-lg">{call.type === 'video' ? 'Видеозвонок' : 'Аудиозвонок'}</span>
+          </div>
+          <p className="text-xl text-primary font-mono">{formatTime(callDuration)}</p>
+        </div>
+      </div>
+
+      {call.type === 'video' && !isVideoOff && (
+        <div className="absolute top-4 right-4 w-48 h-36 rounded-2xl bg-muted/80 backdrop-blur-xl border-2 border-primary/30 shadow-xl overflow-hidden animate-fade-in">
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-muted to-background">
+            <span className="text-5xl">👤</span>
+          </div>
+        </div>
+      )}
+
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4 animate-fade-in">
+        <Button
+          size="icon"
+          variant="outline"
+          className={`w-16 h-16 rounded-full ${isMuted ? 'bg-destructive/20' : 'bg-card/80 backdrop-blur'}`}
+          onClick={() => setIsMuted(!isMuted)}
+        >
+          <Icon name={isMuted ? 'MicOff' : 'Mic'} size={24} />
+        </Button>
+
+        {call.type === 'video' && (
+          <Button
+            size="icon"
+            variant="outline"
+            className={`w-16 h-16 rounded-full ${isVideoOff ? 'bg-destructive/20' : 'bg-card/80 backdrop-blur'}`}
+            onClick={() => setIsVideoOff(!isVideoOff)}
+          >
+            <Icon name={isVideoOff ? 'VideoOff' : 'Video'} size={24} />
+          </Button>
+        )}
+
+        <Button
+          size="icon"
+          className="w-16 h-16 rounded-full bg-destructive hover:bg-destructive/90"
+          onClick={onEndCall}
+        >
+          <Icon name="PhoneOff" size={24} />
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+interface ChatWindowProps {
+  chat: { id: number; name: string; avatar: string; online: boolean };
+  onClose: () => void;
+}
+
+const ChatWindow = ({ chat, onClose }: ChatWindowProps) => {
+  const [messages, setMessages] = useState([
+    { id: 1, text: 'Привет! Как дела?', sender: 'other', time: '14:30' },
+    { id: 2, text: 'Отлично! А у тебя?', sender: 'me', time: '14:31' },
+    { id: 3, text: 'Всё хорошо, спасибо 😊', sender: 'other', time: '14:32' },
+  ]);
+  const [newMessage, setNewMessage] = useState('');
+  const [showStickers, setShowStickers] = useState(false);
+
+  const stickerPacks = [
+    ['😀', '😂', '🥰', '😎', '🤩', '😍', '🤗', '🥳'],
+    ['👍', '👎', '👌', '✌️', '🤟', '👏', '🙌', '🤝'],
+    ['❤️', '💕', '💖', '💗', '💝', '💘', '💞', '💓'],
+  ];
+
+  const handleSendMessage = () => {
+    if (newMessage.trim()) {
+      setMessages([...messages, {
+        id: messages.length + 1,
+        text: newMessage,
+        sender: 'me',
+        time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+      }]);
+      setNewMessage('');
+    }
+  };
+
+  const handleSendSticker = (sticker: string) => {
+    setMessages([...messages, {
+      id: messages.length + 1,
+      text: sticker,
+      sender: 'me',
+      time: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    }]);
+    setShowStickers(false);
+  };
+
+  return (
+    <div className="flex-1 flex flex-col">
+      <div className="p-4 border-b border-border flex items-center justify-between bg-card">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={onClose} className="mr-2">
+            <Icon name="ArrowLeft" size={20} />
+          </Button>
+          <div className="relative">
+            <Avatar className="w-12 h-12">
+              <AvatarFallback className="text-2xl">{chat.avatar}</AvatarFallback>
+            </Avatar>
+            {chat.online && (
+              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+            )}
+          </div>
+          <div>
+            <h3 className="font-semibold">{chat.name}</h3>
+            <p className="text-xs text-muted-foreground">{chat.online ? 'В сети' : 'Не в сети'}</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button size="icon" variant="ghost" className="hover:bg-primary/20">
+            <Icon name="Phone" size={20} />
+          </Button>
+          <Button size="icon" variant="ghost" className="hover:bg-secondary/20">
+            <Icon name="Video" size={20} />
+          </Button>
+        </div>
+      </div>
+
+      <ScrollArea className="flex-1 p-4 bg-gradient-to-br from-background via-muted/10 to-background">
+        <div className="space-y-4 max-w-4xl mx-auto">
+          {messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'} animate-fade-in`}
+            >
+              <div
+                className={`max-w-md px-4 py-3 rounded-2xl ${
+                  msg.sender === 'me'
+                    ? 'bg-gradient-to-r from-primary to-secondary text-white'
+                    : 'bg-card'
+                }`}
+              >
+                <p className={msg.text.length < 5 ? 'text-4xl' : ''}>{msg.text}</p>
+                <p className={`text-xs mt-1 ${msg.sender === 'me' ? 'text-white/70' : 'text-muted-foreground'}`}>
+                  {msg.time}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
+
+      {showStickers && (
+        <div className="border-t border-border bg-card p-4 animate-fade-in">
+          <div className="space-y-3 max-w-4xl mx-auto">
+            {stickerPacks.map((pack, packIdx) => (
+              <div key={packIdx} className="flex gap-2 justify-center">
+                {pack.map((sticker, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSendSticker(sticker)}
+                    className="w-14 h-14 rounded-xl bg-muted/50 hover:bg-muted flex items-center justify-center text-3xl hover:scale-110 transition-all"
+                  >
+                    {sticker}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="p-4 border-t border-border bg-card">
+        <div className="flex gap-2 max-w-4xl mx-auto">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => setShowStickers(!showStickers)}
+            className={showStickers ? 'bg-primary/20' : ''}
+          >
+            <Icon name="Smile" size={20} />
+          </Button>
+          <Input
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+            placeholder="Написать сообщение..."
+            className="flex-1 bg-muted/50"
+          />
+          <Button
+            onClick={handleSendMessage}
+            className="bg-gradient-to-r from-primary to-secondary"
+          >
+            <Icon name="Send" size={20} />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
